@@ -4,9 +4,15 @@ set -e
 TYPE=$1
 NAME=$2
 EMAIL=$3
+SAN=$4   # optional, used mainly for server certs
 
 if [ -z "$TYPE" ] || [ -z "$NAME" ]; then
-    echo "Usage: $0 <type: admin|user|server|smartcard> <common_name> [email]"
+    echo "Usage: $0 <type: admin|user|server|smartcard> <common_name> [email] [SAN]"
+    echo "Examples:"
+    echo "  $0 admin AdminUser admin@example.com"
+    echo "  $0 user Alice alice@example.com"
+    echo "  $0 server myweb www.example.com DNS:www.example.com,DNS:example.com"
+    echo "  $0 smartcard Bob bob@example.com"
     exit 1
 fi
 
@@ -20,7 +26,7 @@ CSR=$OUT/$NAME.csr.pem
 CERT=$OUT/$NAME.crt.pem
 PFX=$OUT/$NAME.pfx
 
-# Select extension based on type
+# Select extension set
 case "$TYPE" in
     admin)
         EXT="admin_cert"
@@ -49,7 +55,12 @@ if [ -n "$EMAIL" ]; then
     SUBJ="$SUBJ/emailAddress=$EMAIL"
 fi
 
-openssl req -new -key $KEY -out $CSR -subj "$SUBJ"
+# If SAN provided, add it during CSR creation
+if [ "$TYPE" == "server" ] && [ -n "$SAN" ]; then
+    openssl req -new -key $KEY -out $CSR -subj "$SUBJ" -addext "subjectAltName=$SAN"
+else
+    openssl req -new -key $KEY -out $CSR -subj "$SUBJ"
+fi
 
 echo "[*] Signing certificate with intermediate CA ($EXT)..."
 openssl ca -config $INTER/openssl-inter.cnf \

@@ -1,8 +1,61 @@
 ####################################################################
-# Certificate Extensions for Different Types
+# OpenSSL intermediate CA configuration
 ####################################################################
 
-[ usr_cert ]        # Regular user cert
+[ ca ]
+default_ca = CA_default
+
+####################################################################
+[ CA_default ]
+dir             = /data/ca/intermediate
+certs           = $dir/certs
+crl_dir         = $dir/crl
+new_certs_dir   = $dir/newcerts
+database        = $dir/index.txt
+serial          = $dir/serial
+RANDFILE        = $dir/private/.rand
+
+private_key     = $dir/private/intermediate.key.pem
+certificate     = $dir/certs/intermediate.cert.pem
+
+crlnumber       = $dir/crlnumber
+crl             = $dir/crl/intermediate.crl.pem
+crl_extensions  = crl_ext
+default_crl_days= 30
+
+default_md      = sha256
+
+name_opt        = ca_default
+cert_opt        = ca_default
+default_days    = 375
+preserve        = no
+policy          = policy_loose
+
+####################################################################
+# Policies
+####################################################################
+
+[ policy_loose ]
+countryName             = optional
+stateOrProvinceName     = optional
+localityName            = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
+
+####################################################################
+# Extensions for CRLs
+####################################################################
+
+[ crl_ext ]
+authorityKeyIdentifier = keyid:always
+
+####################################################################
+# Default cert extensions
+####################################################################
+
+[ usr_cert ]
 basicConstraints = CA:FALSE
 nsCertType = client, email
 keyUsage = digitalSignature, keyEncipherment
@@ -10,32 +63,46 @@ extendedKeyUsage = clientAuth, emailProtection
 subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid,issuer
 
-[ server_cert ]     # Server cert (for TLS/HTTPS)
+[ server_cert ]
 basicConstraints = CA:FALSE
 nsCertType = server
 keyUsage = digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
 subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid,issuer
-# For SAN: set dynamically during CSR creation or via -addext
-# Example: subjectAltName = @alt_names
+# subjectAltName may be injected at CSR creation
 
-[ smartcard_cert ]  # Smart card / hardware token cert
+[ smartcard_cert ]
 basicConstraints = CA:FALSE
 keyUsage = digitalSignature, nonRepudiation
 extendedKeyUsage = clientAuth, smartcardlogon
 subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid,issuer
 
-[ admin_cert ]      # Admin cert — restricted via SAN
+[ admin_cert ]
 basicConstraints = CA:FALSE
 keyUsage = digitalSignature, keyEncipherment
 extendedKeyUsage = clientAuth
 subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid,issuer
-# Hardcoded SANs for admin identity
 subjectAltName = @admin_san
 
 [ admin_san ]
-DNS.1 = admin.local
+DNS.1   = admin.local
 email.1 = admin@example.com
+
+####################################################################
+# Root / intermediate authority identifiers
+####################################################################
+
+[ v3_ca ]
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid:always,issuer
+basicConstraints = critical, CA:true
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+
+[ v3_intermediate_ca ]
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid:always,issuer
+basicConstraints = critical, CA:true, pathlen:0
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
