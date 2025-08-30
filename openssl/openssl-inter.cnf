@@ -1,0 +1,50 @@
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+dir               = /data/ca/intermediate
+certs             = $dir/certs
+crl_dir           = $dir/crl
+database          = $dir/index.txt
+new_certs_dir     = $dir/newcerts
+serial            = $dir/serial
+RANDFILE          = $dir/private/.rand
+private_key       = $dir/private/inter.key.pem
+certificate       = $dir/certs/inter.crt.pem
+crlnumber         = $dir/crlnumber
+default_days      = 825
+default_crl_days  = 30
+default_md        = sha256
+preserve          = no
+policy            = policy_loose
+
+[ policy_loose ]
+commonName              = supplied
+organizationName        = optional
+organizationalUnitName  = optional
+countryName             = optional
+stateOrProvinceName     = optional
+emailAddress            = optional
+
+[ req ]
+distinguished_name = req_distinguished_name
+
+[ req_distinguished_name ]
+commonName = Common Name
+
+# Extensions for issued certs
+[ usr_cert ]
+basicConstraints=CA:FALSE
+nsCertType = client, email
+nsComment = "User Certificate"
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+keyUsage = digitalSignature, keyEncipherment
+extendedKeyUsage = clientAuth, emailProtection
+
+[ server_cert ]
+basicConstraints=CA:FALSE
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
+keyUsage = digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
