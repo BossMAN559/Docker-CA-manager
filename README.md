@@ -6,7 +6,7 @@ docker build -t cert-manager:latest .
 Run with persistent volume:
 docker run -d --name cert-manager -p 443:443 -p 2560:2560 -v certdata:/data/ca cert-manager:latest
 
-Visit https://<host>/ — on first run you will be presented with a "create admin certificate" form. Create it and download the admin key/cert/pfx. Import the admin cert into your browser or client and use it to access the Admin Panel.
+Visit https://host/ — on first run you will be presented with a "create admin certificate" form. Create it and download the admin key/cert/pfx. Import the admin cert into your browser or client and use it to access the Admin Panel.
 
 Key files on the host volume:
 - /data/ca/root/ca.crt.pem            (root cert)
