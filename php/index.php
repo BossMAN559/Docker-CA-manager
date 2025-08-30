@@ -37,13 +37,15 @@ function save_admin_files($keyP, $certP, $pfxPath) {
 }
 
 function is_admin_authenticated() {
-    // nginx passes client cert in SSL_CLIENT_CERT if present
     if (empty($_SERVER['SSL_CLIENT_CERT'])) return false;
-    $client_pem = $_SERVER['SSL_CLIENT_CERT'];
-    $client_fp = fingerprint_from_pem($client_pem);
-    $admin_fp = get_admin_fp();
-    return ($admin_fp && $client_fp && $client_fp === $admin_fp);
+    $cert = openssl_x509_parse($_SERVER['SSL_CLIENT_CERT']);
+    if (!$cert) return false;
+    // look for SAN entry
+    $sans = $cert['extensions']['subjectAltName'] ?? '';
+    return (strpos($sans, 'DNS:admin.local') !== false ||
+            strpos($sans, 'email:admin@example.com') !== false);
 }
+
 
 $action = $_REQUEST['action'] ?? null;
 

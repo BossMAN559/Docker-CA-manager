@@ -1,50 +1,41 @@
-[ ca ]
-default_ca = CA_default
+####################################################################
+# Certificate Extensions for Different Types
+####################################################################
 
-[ CA_default ]
-dir               = /data/ca/intermediate
-certs             = $dir/certs
-crl_dir           = $dir/crl
-database          = $dir/index.txt
-new_certs_dir     = $dir/newcerts
-serial            = $dir/serial
-RANDFILE          = $dir/private/.rand
-private_key       = $dir/private/inter.key.pem
-certificate       = $dir/certs/inter.crt.pem
-crlnumber         = $dir/crlnumber
-default_days      = 825
-default_crl_days  = 30
-default_md        = sha256
-preserve          = no
-policy            = policy_loose
-
-[ policy_loose ]
-commonName              = supplied
-organizationName        = optional
-organizationalUnitName  = optional
-countryName             = optional
-stateOrProvinceName     = optional
-emailAddress            = optional
-
-[ req ]
-distinguished_name = req_distinguished_name
-
-[ req_distinguished_name ]
-commonName = Common Name
-
-# Extensions for issued certs
-[ usr_cert ]
-basicConstraints=CA:FALSE
+[ usr_cert ]        # Regular user cert
+basicConstraints = CA:FALSE
 nsCertType = client, email
-nsComment = "User Certificate"
-subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid,issuer
 keyUsage = digitalSignature, keyEncipherment
 extendedKeyUsage = clientAuth, emailProtection
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
 
-[ server_cert ]
-basicConstraints=CA:FALSE
-subjectKeyIdentifier=hash
-authorityKeyIdentifier=keyid,issuer
+[ server_cert ]     # Server cert (for TLS/HTTPS)
+basicConstraints = CA:FALSE
+nsCertType = server
 keyUsage = digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+# For SAN: set dynamically during CSR creation or via -addext
+# Example: subjectAltName = @alt_names
+
+[ smartcard_cert ]  # Smart card / hardware token cert
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature, nonRepudiation
+extendedKeyUsage = clientAuth, smartcardlogon
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+
+[ admin_cert ]      # Admin cert — restricted via SAN
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature, keyEncipherment
+extendedKeyUsage = clientAuth
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+# Hardcoded SANs for admin identity
+subjectAltName = @admin_san
+
+[ admin_san ]
+DNS.1 = admin.local
+email.1 = admin@example.com

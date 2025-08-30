@@ -1,42 +1,70 @@
 #!/bin/bash
 set -e
-# usage: gen_cert.sh <common-name> <type> <out-prefix>
-# type: user|smartcard|web|admin
-DATA_DIR=${DATA_DIR:-/data/ca}
-INT_DIR="$DATA_DIR/intermediate"
 
-CN="$1"
-TYPE="$2"
-OUT_PREFIX="${3:-$CN}"
+TYPE=$1
+NAME=$2
+EMAIL=$3
 
-if [ -z "$CN" ] || [ -z "$TYPE" ]; then
-  echo "Usage: $0 <common-name> <type:user|smartcard|web|admin> [out-prefix]"
-  exit 1
+if [ -z "$TYPE" ] || [ -z "$NAME" ]; then
+    echo "Usage: $0 <type: admin|user|server|smartcard> <common_name> [email]"
+    exit 1
 fi
 
-KEY="$INT_DIR/private/${OUT_PREFIX}.key.pem"
-CSR="$INT_DIR/csr/${OUT_PREFIX}.csr.pem"
-CERT="$INT_DIR/certs/${OUT_PREFIX}.crt.pem"
-PFX="$INT_DIR/certs/${OUT_PREFIX}.pfx"
+BASE=/data/ca
+INTER=$BASE/intermediate
+OUT=/data/issued
+mkdir -p $OUT
 
-mkdir -p "$INT_DIR/csr" "$INT_DIR/private" "$INT_DIR/certs"
+KEY=$OUT/$NAME.key.pem
+CSR=$OUT/$NAME.csr.pem
+CERT=$OUT/$NAME.crt.pem
+PFX=$OUT/$NAME.pfx
 
-# generate EC key
-openssl ecparam -name prime256v1 -genkey -noout -out "$KEY"
-chmod 400 "$KEY"
+# Select extension based on type
+case "$TYPE" in
+    admin)
+        EXT="admin_cert"
+        ;;
+    user)
+        EXT="usr_cert"
+        ;;
+    server)
+        EXT="server_cert"
+        ;;
+    smartcard)
+        EXT="smartcard_cert"
+        ;;
+    *)
+        echo "Invalid type: $TYPE"
+        exit 1
+        ;;
+esac
 
-# create CSR
-openssl req -new -key "$KEY" -out "$CSR" -subj "/CN=$CN/O=Example/$TYPE"
+echo "[*] Generating EC key for $TYPE certificate..."
+openssl ecparam -genkey -name prime256v1 -out $KEY
 
-# sign with intermediate CA
-openssl ca -config /etc/ssl/openssl-inter.cnf -extensions usr_cert -days 825 -notext -md sha256 -in "$CSR" -out "$CERT" -batch
-chmod 444 "$CERT"
+echo "[*] Creating CSR..."
+SUBJ="/CN=$NAME"
+if [ -n "$EMAIL" ]; then
+    SUBJ="$SUBJ/emailAddress=$EMAIL"
+fi
 
-# create a pfx if needed (user will be able to download)
-openssl pkcs12 -export -inkey "$KEY" -in "$CERT" -certfile $INT_DIR/certs/chain.pem -out "$PFX" -passout pass:
-# empty password by default; admin can repackage later with passphrase
+openssl req -new -key $KEY -out $CSR -subj "$SUBJ"
 
-# output details
-echo "CERT=$CERT"
-echo "KEY=$KEY"
-echo "PFX=$PFX"
+echo "[*] Signing certificate with intermediate CA ($EXT)..."
+openssl ca -config $INTER/openssl-inter.cnf \
+  -extensions $EXT -days 825 -notext -md sha256 \
+  -in $CSR -out $CERT -batch
+
+chmod 600 $KEY
+chmod 644 $CERT
+
+echo "[*] Exporting PKCS#12 (PFX) bundle..."
+openssl pkcs12 -export \
+  -inkey $KEY -in $CERT -certfile $INTER/certs/ca-chain.pem \
+  -out $PFX -passout pass:changeit
+
+echo "[*] Done."
+echo "  Key:   $KEY"
+echo "  Cert:  $CERT"
+echo "  PFX:   $PFX"
